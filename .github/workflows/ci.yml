@@ -1,0 +1,44 @@
+name: Laravel CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  laravel-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Clonar repositorio
+      uses: actions/checkout@v3
+
+    - name: Instalar PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: 8.2
+
+    - name: Instalar dependencias
+      run: composer install --no-progress --prefer-dist
+
+    - name: Copiar .env
+      run: cp .env.example .env
+
+    - name: Generar key
+      run: php artisan key:generate
+
+    - name: Crear base de datos SQLite
+      run: |
+        mkdir -p database
+        touch database/database.sqlite
+
+    - name: Configurar DB
+      run: |
+        sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env
+        sed -i 's/DB_DATABASE=.*/DB_DATABASE=database\/database.sqlite/' .env
+
+    - name: Migraciones + seed
+      run: php artisan migrate --seed
+
+    - name: Ejecutar tests
+      run: php artisan test

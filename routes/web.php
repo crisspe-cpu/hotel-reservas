@@ -8,8 +8,16 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+
+    $user = Auth::user();
+
+    if ($user->role === 'admin') {
+        return view('admin.dashboard');
+    } else {
+        return view('recepcionista.dashboard');
+    }
+
+})->middleware(['auth'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
