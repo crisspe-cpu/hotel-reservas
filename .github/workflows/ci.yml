@@ -10,35 +10,58 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # 1. Clonar repositorio
     - name: Clonar repositorio
       uses: actions/checkout@v3
 
+    # 2. Instalar PHP
     - name: Instalar PHP
       uses: shivammathur/setup-php@v2
       with:
         php-version: 8.2
+        extensions: mbstring, bcmath, pdo, sqlite
+        coverage: none
 
-    - name: Instalar dependencias
-      run: composer install --no-progress --prefer-dist
+    # 3. Instalar dependencias backend
+    - name: Instalar Composer
+      run: composer install --no-progress --prefer-dist --no-interaction
 
+    # 4. Instalar Node
+    - name: Instalar Node
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+
+    # 5. Instalar dependencias frontend
+    - name: Instalar NPM
+      run: npm install
+
+    # 6. Build de assets (SOLUCION AL ERROR VITE 🔥)
+    - name: Build assets
+      run: npm run build
+
+    # 7. Configurar entorno
     - name: Copiar .env
       run: cp .env.example .env
 
-    - name: Generar key
+    - name: Generar APP_KEY
       run: php artisan key:generate
 
+    # 8. Configurar base de datos SQLite
     - name: Crear base de datos SQLite
       run: |
         mkdir -p database
         touch database/database.sqlite
 
-    - name: Configurar DB
+    - name: Configurar DB SQLite
       run: |
         sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env
         sed -i 's/DB_DATABASE=.*/DB_DATABASE=database\/database.sqlite/' .env
 
-    - name: Migraciones + seed
+    # 9. Migraciones + seeders
+    - name: Ejecutar migraciones
       run: php artisan migrate --seed
 
+    # 10. Ejecutar tests
     - name: Ejecutar tests
       run: php artisan test
