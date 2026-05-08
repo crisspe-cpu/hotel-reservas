@@ -1,0 +1,31 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('tipo_habitaciones', function (Blueprint $table) {
+            $table->id('id_tipo');
+            $table->string('nombre', 50);
+            $table->integer('capacidad');
+            $table->decimal('precio_base', 10, 2);
+            $table->text('descripcion')->nullable();
+            // No lleva timestamps porque el admin la gestiona manualmente
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('tipo_habitacions');
+    }
+};

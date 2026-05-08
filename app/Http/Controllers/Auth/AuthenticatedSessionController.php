@@ -12,7 +12,7 @@ use Illuminate\View\View;
 class AuthenticatedSessionController extends Controller
 {
     /**
-     * Display the login view.
+     * Mostrar login
      */
     public function create(): View
     {
@@ -20,7 +20,7 @@ class AuthenticatedSessionController extends Controller
     }
 
     /**
-     * Handle an incoming authentication request.
+     * Procesar login
      */
     public function store(LoginRequest $request): RedirectResponse
     {
@@ -28,11 +28,29 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $user = Auth::user();
+
+        // ADMIN
+        if ($user->role === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+
+        // RECEPCIONISTA
+        if ($user->role === 'recepcionista') {
+            return redirect()->route('recepcionista.dashboard');
+        }
+
+        // Si no tiene rol válido
+        Auth::logout();
+
+        return redirect('/')
+            ->withErrors([
+                'email' => 'El usuario no tiene un rol válido.'
+            ]);
     }
 
     /**
-     * Destroy an authenticated session.
+     * Cerrar sesión
      */
     public function destroy(Request $request): RedirectResponse
     {

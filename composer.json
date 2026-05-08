@@ -68,9 +68,11 @@
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
         ]
     },
-    "extra": {
-        "laravel": {
-            "dont-discover": []
+        "extra": {
+            "laravel": {
+                "dont-discover": [
+                    "laravel/pail"
+        ]
         }
     },
     "config": {

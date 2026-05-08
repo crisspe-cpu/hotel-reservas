@@ -23,6 +23,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'estado'
     ];
 
     /**
@@ -46,5 +47,26 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function reservas()
+    {
+        return $this->hasMany(Reserva::class, 'id_user', 'id_user');
+    }
+
+    public function boletas()
+    {
+        return $this->hasMany(Boleta::class, 'id_user', 'id_user');
+    }
+
+    // ── Helpers de rol
+    public function esAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function esRecepcionista(): bool
+    {
+        return $this->role === 'recepcionista';
     }
 }
