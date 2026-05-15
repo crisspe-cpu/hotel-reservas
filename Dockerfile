@@ -50,9 +50,6 @@ RUN composer install --no-dev --no-scripts --no-autoloader --optimize-autoloader
 COPY . .
 
 RUN composer dump-autoload --optimize \
-    && php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
