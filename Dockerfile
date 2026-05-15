@@ -1,7 +1,7 @@
 # ─── Etapa base ───────────────────────────────────────────────
 FROM php:8.2-fpm-alpine AS base
 
-# Dependencias del sistema
+# Dependencias del sistema + Node
 RUN apk add --no-cache \
     bash \
     curl \
@@ -11,6 +11,8 @@ RUN apk add --no-cache \
     zip \
     unzip \
     oniguruma-dev \
+    nodejs \
+    npm \
     && docker-php-ext-configure gd \
     && docker-php-ext-install \
         pdo \
@@ -21,40 +23,36 @@ RUN apk add --no-cache \
         opcache \
         bcmath
 
-# Instalar Composer
+# Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Copiar archivos de dependencias primero (cache de capas)
+# Copiar dependencias primero
 COPY composer.json composer.lock ./
+COPY package.json package-lock.json ./
 
-# ─── Etapa desarrollo ─────────────────────────────────────────
-FROM base AS development
-
-RUN composer install --no-scripts --no-autoloader
-
-COPY . .
-
-RUN composer dump-autoload --optimize
-
-EXPOSE 9000
-CMD ["php-fpm"]
-
-# ─── Etapa producción ─────────────────────────────────────────
+# ─── Producción ───────────────────────────────────────────────
 FROM base AS production
 
-# Instalar sin dependencias de desarrollo
-RUN composer install --no-dev --no-scripts --no-autoloader --optimize-autoloader
+# Instalar backend
+RUN composer install --no-dev --optimize-autoloader
 
+# Instalar frontend
+RUN npm install
+
+# Copiar proyecto
 COPY . .
 
+# Build Vite
+RUN npm run build
+
+# Optimizar Laravel
 RUN composer dump-autoload --optimize \
     && mkdir -p storage/framework/cache \
     && mkdir -p storage/framework/sessions \
     && mkdir -p storage/framework/views \
     && mkdir -p bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
 EXPOSE 10000
