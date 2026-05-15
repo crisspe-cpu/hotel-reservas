@@ -7,13 +7,32 @@
 @section('topbar-actions')
     @if($reserva->estado !== 'cancelada')
         <a href="{{ route('recepcionista.pagos.create', ['id_reserva' => $reserva->id_reserva]) }}" class="btn btn-success"><i class="bi bi-credit-card"></i> Registrar Pago</a>
-        @if($reserva->estado === 'confirmada' && !$reserva->boleta)
-            <form method="POST" action="{{ route('recepcionista.boletas.store') }}" style="display:inline">
-                @csrf
-                <input type="hidden" name="id_reserva" value="{{ $reserva->id_reserva }}">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-receipt"></i> Emitir Boleta</button>
-            </form>
-        @endif
+            @php
+                $ultimaBoleta = $reserva->boletas->sortByDesc('fecha_emision')->first();
+                
+                    $totalPagado = $reserva->pagos->sum('monto');
+
+                    $ultimaBoleta = $reserva->boletas()->latest('fecha_emision')->first();
+
+                    $totalFacturado = $reserva->boletas->sum('total');
+
+                    $montoNuevaBoleta = $totalPagado - $totalFacturado;
+
+                    $puedeEmitirBoleta =
+                        $reserva->estado === 'confirmada' &&
+                        $montoNuevaBoleta > 0;
+            @endphp
+
+            @if($puedeEmitirBoleta)
+                <form method="POST" action="{{ route('recepcionista.boletas.store') }}" style="display:inline">
+                    @csrf
+                    <input type="hidden" name="id_reserva" value="{{ $reserva->id_reserva }}">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-receipt"></i>
+                        Emitir Boleta
+                    </button>
+                </form>
+            @endif
     @endif
     <a href="{{ route('recepcionista.reservas.edit', $reserva) }}" class="btn btn-ghost"><i class="bi bi-pencil"></i> Editar</a>
 @endsection
@@ -37,7 +56,7 @@
                     ['Salida', $reserva->fecha_salida->format('d/m/Y')],
                     ['Noches', $reserva->noches],
                     ['Huéspedes', $reserva->num_huespedes],
-                    ['Atendido por', $reserva->usuario->nombre.' '.$reserva->usuario->apellido],
+                    ['Atendido por', $reserva->usuario->name.' '.$reserva->usuario->apellido],
                 ] as [$k,$v])
                 <tr>
                     <td style="color:var(--muted);padding:9px 0;border-bottom:1px solid var(--border)">{{ $k }}</td>
@@ -104,18 +123,52 @@
         </div>
 
         {{-- Boleta --}}
-        @if($reserva->boleta)
-        <div class="card" style="border-color:rgba(16,185,129,.3)">
-            <div class="card-header" style="background:rgba(16,185,129,.05)">
-                <span class="card-title"><i class="bi bi-receipt" style="color:#34d399"></i> Boleta Emitida</span>
-                <a href="{{ route('recepcionista.boletas.show', $reserva->boleta) }}" class="btn btn-ghost btn-sm">Ver boleta</a>
+        @if($reserva->boletas->count())
+            <div class="card" style="border-color:rgba(16,185,129,.3)">
+                
+                <div class="card-header" style="background:rgba(16,185,129,.05)">
+                    <span class="card-title">
+                        <i class="bi bi-receipt" style="color:#34d399"></i>
+                        Boletas Emitidas
+                    </span>
+                </div>
+
+                <div class="card-body">
+
+                    @foreach($reserva->boletas as $boleta)
+
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+
+                            <div>
+                                <div style="font-size:13px;font-weight:600">
+                                    Boleta #{{ $boleta->id_boleta }}
+                                </div>
+
+                                <div style="font-size:12px;color:var(--muted)">
+                                    {{ $boleta->fecha_emision->format('d/m/Y H:i') }}
+                                </div>
+                            </div>
+
+                            <div style="display:flex;align-items:center;gap:12px">
+
+                                <div style="font-weight:600;color:#34d399">
+                                    S/ {{ number_format($boleta->total, 2) }}
+                                </div>
+
+                                <a href="{{ route('recepcionista.boletas.show', $boleta) }}"
+                                class="btn btn-ghost btn-sm">
+                                    Ver
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                    @endforeach
+
+                </div>
             </div>
-            <div class="card-body">
-                <div style="font-size:13px;color:var(--muted)">Emitida el {{ $reserva->boleta->fecha_emision->format('d/m/Y H:i') }}</div>
-                <div style="font-size:18px;font-weight:600;color:#34d399;margin-top:4px">S/ {{ number_format($reserva->boleta->total, 2) }}</div>
-            </div>
-        </div>
-        @endif
+            @endif
     </div>
 </div>
 @endsection

@@ -88,7 +88,7 @@
                         <span class="badge badge-{{ $map[$r->estado] ?? 'muted' }}">{{ $r->estado }}</span>
                     </td>
                     <td style="font-weight:500">S/ {{ number_format($r->precio_total, 2) }}</td>
-                    <td><a href="{{ route('reservas.show', $r) }}" class="btn btn-ghost btn-sm btn-icon"><i class="bi bi-eye"></i></a></td>
+                    <td><a href="{{ route('recepcionista.reservas.show', $r) }}" class="btn btn-ghost btn-sm btn-icon"><i class="bi bi-eye"></i></a></td>
                 </tr>
                 @empty
                 <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">No hay check-ins para hoy</td></tr>

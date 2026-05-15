@@ -15,7 +15,7 @@ class Boleta extends Model
 
     protected $fillable = [
         'id_reserva',
-        'id_user',
+        'id',
         'fecha_emision',
         'total',
     ];
@@ -31,8 +31,8 @@ class Boleta extends Model
         return $this->belongsTo(Reserva::class, 'id_reserva', 'id_reserva');
     }
 
-    public function usuario()
+    public function usuario()   
     {
-        return $this->belongsTo(User::class, 'id_user', 'id_user');
+        return $this->belongsTo(User::class, 'id', 'id');
     }
 }

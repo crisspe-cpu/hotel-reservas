@@ -54,11 +54,17 @@
                     </td>
                     <td>
                         <div class="gap-2">
-                            <a href="{{ route('admin.habitaciones.edit', $h) }}" class="btn btn-ghost btn-sm btn-icon"><i class="bi bi-pencil"></i></a>
-                            <form method="POST" action="{{ route('admin.habitaciones.destroy', $h) }}" onsubmit="return confirm('¿Eliminar habitación?')">
-                                @csrf @method('DELETE')
-                                <button class="btn btn-danger btn-sm btn-icon"><i class="bi bi-trash"></i></button>
-                            </form>
+
+                            <a href="{{ route('admin.habitaciones.show', $h) }}"
+                            class="btn btn-ghost btn-sm btn-icon">
+                                <i class="bi bi-eye"></i>
+                            </a>
+
+                            <a href="{{ route('admin.habitaciones.edit', $h) }}"
+                            class="btn btn-ghost btn-sm btn-icon">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+
                         </div>
                     </td>
                 </tr>

@@ -78,9 +78,7 @@
                             @if($r->estado !== 'cancelada')
                             <a href="{{ route('recepcionista.reservas.edit', $r) }}" class="btn btn-ghost btn-sm btn-icon" title="Editar"><i class="bi bi-pencil"></i></a>
                             @endif
-                            <form method="POST" action="{{ route('recepcionista.reservas.destroy', $r) }}" onsubmit="return confirm('¿Eliminar esta reserva?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-danger btn-sm btn-icon"><i class="bi bi-trash"></i></button>
+                            
                             </form>
                         </div>
                     </td>

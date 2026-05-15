@@ -108,7 +108,10 @@ Route::middleware(['auth', 'role:admin'])
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
 
-    Route::resource('habitaciones', HabitacionController::class);
+    Route::resource('habitaciones', HabitacionController::class)
+    ->parameters([
+        'habitaciones' => 'habitacion'
+    ]);
 
     Route::resource('tipos', TipoHabitacionController::class);
 

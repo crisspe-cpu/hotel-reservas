@@ -21,7 +21,7 @@
                     <td class="mono" style="color:var(--muted)">{{ $b->id_boleta }}</td>
                     <td><a href="{{ route('recepcionista.reservas.show', $b->reserva) }}" style="color:var(--accent2)">#{{ $b->id_reserva }}</a></td>
                     <td>{{ $b->reserva->cliente->nombre }} {{ $b->reserva->cliente->apellido }}</td>
-                    <td style="color:var(--muted)">{{ $b->usuario->nombre }}</td>
+                    <td style="color:var(--muted)">{{ $b->usuario->name }}</td>
                     <td class="mono" style="font-size:12px">{{ $b->fecha_emision->format('d/m/Y H:i') }}</td>
                     <td style="font-weight:600; color:var(--success)">S/ {{ number_format($b->total, 2) }}</td>
                     <td><a href="{{ route('recepcionista.boletas.show', $b) }}" class="btn btn-ghost btn-sm btn-icon"><i class="bi bi-eye"></i></a></td>

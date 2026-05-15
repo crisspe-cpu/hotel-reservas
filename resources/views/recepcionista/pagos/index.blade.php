@@ -30,10 +30,6 @@
                     <td><span class="badge badge-info">{{ $p->metodo_pago }}</span></td>
                     <td style="font-weight:600">S/ {{ number_format($p->monto, 2) }}</td>
                     <td>
-                        <form method="POST" action="{{ route('recepcionista.pagos.destroy', $p) }}" onsubmit="return confirm('¿Anular este pago?')">
-                            @csrf @method('DELETE')
-                            <button class="btn btn-danger btn-sm btn-icon"><i class="bi bi-trash"></i></button>
-                        </form>
                     </td>
                 </tr>
                 @empty

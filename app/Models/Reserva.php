@@ -15,7 +15,7 @@ class Reserva extends Model
 
     protected $fillable = [
         'id_cliente',
-        'id_user',
+        'id',
         'fecha_entrada',
         'fecha_salida',
         'num_huespedes',
@@ -40,7 +40,7 @@ class Reserva extends Model
 
     public function usuario()
     {
-        return $this->belongsTo(User::class, 'id_user', 'id');
+        return $this->belongsTo(User::class, 'id', 'id');
     }
 
     public function detalles()
@@ -63,9 +63,9 @@ class Reserva extends Model
         return $this->hasMany(Pago::class, 'id_reserva', 'id_reserva');
     }
 
-    public function boleta()
+    public function boletas()
     {
-        return $this->hasOne(Boleta::class, 'id_reserva', 'id_reserva');
+        return $this->hasMany(Boleta::class, 'id_reserva', 'id_reserva');
     }
 
     // ── Scopes ──────────────────────────────────────────────

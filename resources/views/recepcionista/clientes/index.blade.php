@@ -61,9 +61,6 @@
                         <div class="gap-2">
                             <a href="{{ route('recepcionista.clientes.show', $c) }}" class="btn btn-ghost btn-sm btn-icon" title="Ver"><i class="bi bi-eye"></i></a>
                             <a href="{{ route('recepcionista.clientes.edit', $c) }}" class="btn btn-ghost btn-sm btn-icon" title="Editar"><i class="bi bi-pencil"></i></a>
-                            <form method="POST" action="{{ route('recepcionista.clientes.destroy', $c) }}" onsubmit="return confirm('¿Eliminar este cliente?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-danger btn-sm btn-icon" title="Eliminar"><i class="bi bi-trash"></i></button>
                             </form>
                         </div>
                     </td>

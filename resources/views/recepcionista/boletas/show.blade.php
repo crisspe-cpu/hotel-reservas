@@ -88,7 +88,7 @@
         <div style="height:1px;background:var(--border);margin:20px 0"></div>
 
         <div style="text-align:center;font-size:12px;color:var(--muted)">
-            Emitido por: {{ $boleta->usuario->nombre }} {{ $boleta->usuario->apellido }}<br>
+            Emitido por: {{ $boleta->usuario->name }} {{ $boleta->usuario->apellido }}<br>
             Gracias por su preferencia 🙏
         </div>
     </div>

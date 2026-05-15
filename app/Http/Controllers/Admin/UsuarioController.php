@@ -42,20 +42,24 @@ class UsuarioController extends Controller
 
     public function edit(User $usuario)
     {
-        return view('admin.usuarios.edit', compact('usuario'));
+        return view('admin.usuarios.edit', [
+            'usuario' => $usuario,
+            'roles' => ['admin', 'recepcionista'],
+            'estados' => ['activo', 'inactivo'],
+        ]);
     }
 
     public function update(Request $request, User $usuario)
     {
         $request->validate([
             'name'     => 'required|string|max:100',
-            'email'     => 'required|email|max:150|unique:users,email,' . $usuario->id_user . ',id_user',
+            'email' => 'required|email|max:150|unique:users,email,' . $usuario->id,
             'role'        => 'required|in:recepcionista,admin',
             'estado'     => 'required|in:activo,inactivo',
             'password' => 'nullable|string|min:8|confirmed',
         ]);
 
-        $datos = $request->only(['nombre', 'apellido', 'telefono', 'email', 'role', 'estado']);
+        $datos = $request->only(['name', 'email', 'role', 'estado']);
         if ($request->filled('password')) {
             $datos['password'] = Hash::make($request->password);
         }

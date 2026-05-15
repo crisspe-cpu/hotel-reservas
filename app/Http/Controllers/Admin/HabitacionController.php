@@ -44,12 +44,29 @@ class HabitacionController extends Controller
 
     public function edit(Habitacion $habitacion)
     {
+        // No permitir editar habitaciones ocupadas
+        if ($habitacion->estado === 'no disponible') {
+            return redirect()
+                ->route('admin.habitaciones.show', $habitacion)
+                ->withErrors([
+                    'error' => 'No se puede editar una habitación ocupada.'
+                ]);
+        }
+
         $tipos = TipoHabitacion::orderBy('nombre')->get();
+
         return view('admin.habitaciones.edit', compact('habitacion', 'tipos'));
     }
 
     public function update(Request $request, Habitacion $habitacion)
     {
+        // Seguridad extra
+        if ($habitacion->estado === 'no disponible') {
+            return back()->withErrors([
+                'error' => 'No se puede modificar una habitación ocupada.'
+            ]);
+        }
+
         $request->validate([
             'numero'             => 'required|string|max:10|unique:habitaciones,numero,' . $habitacion->id_habitacion . ',id_habitacion',
             'piso'               => 'required|integer|min:1',
@@ -57,10 +74,15 @@ class HabitacionController extends Controller
             'id_tipo_habitacion' => 'required|exists:tipo_habitaciones,id_tipo',
         ]);
 
-        $habitacion->update($request->only(['numero', 'piso', 'estado', 'id_tipo_habitacion']));
+        $habitacion->update($request->only([
+            'numero',
+            'piso',
+            'estado',
+            'id_tipo_habitacion'
+        ]));
 
         return redirect()->route('admin.habitaciones.index')
-                         ->with('success', 'Habitación actualizada.');
+                        ->with('success', 'Habitación actualizada.');
     }
 
     public function destroy(Habitacion $habitacion)

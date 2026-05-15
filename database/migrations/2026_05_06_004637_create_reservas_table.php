@@ -14,7 +14,7 @@ return new class extends Migration
             Schema::create('reservas', function (Blueprint $table) {
             $table->id('id_reserva');
             $table->unsignedBigInteger('id_cliente');
-            $table->unsignedBigInteger('id_user');
+            $table->unsignedBigInteger('id');
             $table->date('fecha_entrada');
             $table->date('fecha_salida');
             $table->integer('num_huespedes')->default(1);
@@ -25,7 +25,7 @@ return new class extends Migration
 
             $table->foreign('id_cliente')->references('id_cliente')->on('clientes')->onUpdate('cascade')->onDelete('restrict');
 
-            $table->foreign('id_user')->references('id')->on('users')->onUpdate('cascade')->onDelete('restrict');
+            $table->foreign('id')->references('id')->on('users')->onUpdate('cascade')->onDelete('restrict');
         });
     }
     

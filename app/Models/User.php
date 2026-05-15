@@ -51,12 +51,12 @@ class User extends Authenticatable
 
     public function reservas()
     {
-        return $this->hasMany(Reserva::class, 'id_user', 'id_user');
+        return $this->hasMany(Reserva::class, 'id_user', 'id');
     }
 
     public function boletas()
     {
-        return $this->hasMany(Boleta::class, 'id_user', 'id_user');
+        return $this->hasMany(Boleta::class, 'id_user', 'id');
     }
 
     // ── Helpers de rol

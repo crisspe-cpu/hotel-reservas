@@ -30,10 +30,6 @@
                     <td>
                         <div class="gap-2">
                             <a href="{{ route('admin.tipos.edit', $t) }}" class="btn btn-ghost btn-sm btn-icon"><i class="bi bi-pencil"></i></a>
-                            <form method="POST" action="{{ route('admin.tipos.destroy', $t) }}" onsubmit="return confirm('¿Eliminar tipo?')">
-                                @csrf @method('DELETE')
-                                <button class="btn btn-danger btn-sm btn-icon"><i class="bi bi-trash"></i></button>
-                            </form>
                         </div>
                     </td>
                 </tr>

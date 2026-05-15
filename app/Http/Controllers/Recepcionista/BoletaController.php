@@ -25,36 +25,43 @@ class BoletaController extends Controller
             'id_reserva' => 'required|exists:reservas,id_reserva',
         ]);
 
-        $reserva = Reserva::with('pagos', 'cliente')->findOrFail($request->id_reserva);
+        $reserva = Reserva::with('pagos', 'boletas')
+                        ->findOrFail($request->id_reserva);
 
-        // Solo se emite boleta si la reserva está confirmada
+        // Solo emitir si está confirmada
         if ($reserva->estado !== 'confirmada') {
-            return back()->withErrors(['error' => 'Solo se puede emitir boleta de reservas confirmadas.']);
+
+            return back()->withErrors([
+                'error' => 'Solo se puede emitir boleta de reservas confirmadas.'
+            ]);
         }
 
-        // No emitir si ya tiene boleta
-        if ($reserva->boleta) {
-            return redirect()->route('boletas.show', $reserva->boleta)
-                             ->with('info', 'Esta reserva ya tiene una boleta emitida.');
+        $reserva = Reserva::with('boletas')->findOrFail($request->id_reserva);
+
+        // total actual de la reserva
+        $totalPagado = $reserva->pagos()->sum('monto');
+        // total ya facturado en boletas anteriores
+        $totalFacturado = $reserva->boletas->sum('total');
+
+        // diferencia real
+        $montoNuevaBoleta = $totalPagado - $totalFacturado;
+
+        if ($montoNuevaBoleta <= 0) {
+            return back()->withErrors([
+                'error' => 'No hay cambios para emitir boleta.'
+            ]);
         }
 
-        $totalPagado = $reserva->pagos->sum('monto');
+            $boleta = Boleta::create([
+                'id_reserva'    => $reserva->id_reserva,
+                'id'            => Auth::id(),
+                'fecha_emision' => now(),
+                'total'         => $montoNuevaBoleta,
+            ]);
 
-        $boleta = Boleta::create([
-            'id_reserva'    => $reserva->id_reserva,
-            'id_user'       => Auth::id(),
-            'fecha_emision' => now(),
-            'total'         => $totalPagado,
-        ]);
-
-        // Marcar reserva como completada y liberar habitaciones
-        $reserva->update(['estado' => 'cancelada']); // usar 'completada' si agregas ese ENUM
-        foreach ($reserva->habitaciones as $hab) {
-            $hab->update(['estado' => 'disponible']);
-        }
-
-        return redirect()->route('boletas.show', $boleta)
-                         ->with('success', 'Boleta emitida correctamente.');
+        return redirect()
+            ->route('recepcionista.boletas.show', $boleta)
+            ->with('success', 'Boleta emitida correctamente.');
     }
 
     public function show(Boleta $boleta)
