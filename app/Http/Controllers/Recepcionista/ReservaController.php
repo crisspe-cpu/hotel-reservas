@@ -144,7 +144,7 @@ class ReservaController extends Controller
             $nuevoEstado = $request->estado;
 
             // Si debe dinero vuelve a pendiente
-            if ($nuevoTotal > $totalPagado) {
+            if ($request->estado !== 'cancelada' && $nuevoTotal > $totalPagado) {
                 $nuevoEstado = 'pendiente';
             }
 
