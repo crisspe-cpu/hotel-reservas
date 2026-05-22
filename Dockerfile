@@ -1,19 +1,16 @@
-# ==============================
-# BASE
-# ==============================
 FROM php:8.2-fpm-alpine
 
-# Dependencias del sistema
+# Dependencias sistema
 RUN apk add --no-cache \
     bash \
     curl \
+    nodejs \
+    npm \
     libpng-dev \
     libjpeg-turbo-dev \
     libzip-dev \
     zip \
     unzip \
-    nodejs \
-    npm \
     oniguruma-dev
 
 # Extensiones PHP
@@ -32,14 +29,11 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Copiar dependencias primero (cache Docker)
-COPY composer.json composer.lock ./
+# Copiar TODO el proyecto primero
+COPY . .
 
 # Instalar dependencias Laravel
 RUN composer install --no-dev --optimize-autoloader --no-interaction
-
-# Copiar proyecto
-COPY . .
 
 # Instalar frontend
 RUN npm install
