@@ -41,6 +41,13 @@ RUN npm install
 # Build Vite
 RUN npm run build
 
+# Crear carpetas necesarias Laravel
+RUN mkdir -p storage/framework/cache \
+    && mkdir -p storage/framework/sessions \
+    && mkdir -p storage/framework/views \
+    && mkdir -p storage/logs \
+    && mkdir -p bootstrap/cache
+
 # Permisos Laravel
 RUN chmod -R 777 storage bootstrap/cache
 
