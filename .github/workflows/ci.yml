@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Clonar repositorio
+    # 1. Clonar repositorio 
     - name: Clonar repositorio
       uses: actions/checkout@v4
-
+ 
     # 2. Instalar PHP
     - name: Instalar PHP
       uses: shivammathur/setup-php@v2
@@ -21,18 +21,18 @@ jobs:
         php-version: 8.2
         extensions: mbstring, bcmath, pdo, sqlite
         coverage: none
-
+ 
     - name: Cache Composer
       uses: actions/cache@v4
-      with:
+      with: 
         path: vendor
         key: composer-${{ hashFiles('composer.lock') }}
-
+ 
     # 3. Instalar dependencias backend
     - name: Instalar Composer
       run: composer install --no-progress --prefer-dist --no-interaction
 
-    # 4. Instalar Node
+    # 4. Instalar Node 
     - name: Instalar Node
       uses: actions/setup-node@v4
       with:
@@ -40,19 +40,19 @@ jobs:
 
     - name: Cache Node
       uses: actions/cache@v4
-      with:
+      with: 
         path: node_modules
         key: node-${{ hashFiles('package-lock.json') }}
 
     # 5. Instalar dependencias frontend
     - name: Instalar NPM
       run: npm install
-
+ 
     # 6. Build de assets (SOLUCION AL ERROR VITE 🔥)
     - name: Build assets
       run: npm run build
 
-    # 7. Configurar entorno
+    # 7. Configurar entorno 
     - name: Copiar .env
       run: cp .env.example .env
 
@@ -70,7 +70,7 @@ jobs:
         sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env
         sed -i 's/DB_DATABASE=.*/DB_DATABASE=database\/database.sqlite/' .env
 
-    # 9. Migraciones + seeders
+    # 9. Migraciones + seeders 
     - name: Ejecutar migraciones
       run: php artisan migrate --seed
 
@@ -88,4 +88,4 @@ jobs:
 
     steps:
       - name: Trigger Render Deploy 
-        run: curl ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: curl ${{ secrets.RENDER_DEPLOY_HOOK }} 
