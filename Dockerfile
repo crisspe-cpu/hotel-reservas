@@ -1,7 +1,9 @@
-# ─── Etapa base ───────────────────────────────────────────────
-FROM php:8.2-fpm-alpine AS base
+# ==============================
+# BASE
+# ==============================
+FROM php:8.2-fpm-alpine
 
-# Dependencias del sistema + Node
+# Dependencias del sistema
 RUN apk add --no-cache \
     bash \
     curl \
@@ -10,51 +12,49 @@ RUN apk add --no-cache \
     libzip-dev \
     zip \
     unzip \
-    oniguruma-dev \
     nodejs \
     npm \
-    && docker-php-ext-configure gd \
+    oniguruma-dev
+
+# Extensiones PHP
+RUN docker-php-ext-configure gd \
     && docker-php-ext-install \
-        pdo \
-        pdo_mysql \
-        mbstring \
-        zip \
-        gd \
-        opcache \
-        bcmath
+    pdo \
+    pdo_mysql \
+    mbstring \
+    zip \
+    gd \
+    opcache \
+    bcmath
 
 # Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Copiar dependencias primero
+# Copiar dependencias primero (cache Docker)
 COPY composer.json composer.lock ./
-COPY package.json package-lock.json ./
 
-# ─── Producción ───────────────────────────────────────────────
-FROM base AS production
-
-# Instalar backend
-RUN composer install --no-dev --optimize-autoloader
-
-# Instalar frontend
-RUN npm install
+# Instalar dependencias Laravel
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Copiar proyecto
 COPY . .
 
+# Instalar frontend
+RUN npm install
+
 # Build Vite
 RUN npm run build
 
-# Optimizar Laravel
-RUN composer dump-autoload --optimize \
-    && mkdir -p storage/framework/cache \
-    && mkdir -p storage/framework/sessions \
-    && mkdir -p storage/framework/views \
-    && mkdir -p bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache
+# Permisos Laravel
+RUN chmod -R 775 storage bootstrap/cache
+
+# Optimización Laravel
+RUN php artisan config:cache || true
+RUN php artisan route:cache || true
+RUN php artisan view:cache || true
 
 EXPOSE 10000
 
-CMD php artisan serve --host=0.0.0.0 --port=$PORT
+CMD ["sh", "-c", "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT"]
