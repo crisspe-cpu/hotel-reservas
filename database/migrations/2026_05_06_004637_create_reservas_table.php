@@ -19,7 +19,7 @@ return new class extends Migration
             $table->date('fecha_salida');
             $table->integer('num_huespedes')->default(1);
             $table->decimal('precio_total', 10, 2)->default(0.00);
-            $table->enum('estado', ['pendiente', 'confirmada', 'cancelada'])->default('pendiente');
+            $table->enum('estado', ['pendiente','confirmada','cancelada','finalizada'])->default('pendiente');
             $table->datetime('fecha_registro')->nullable();
             $table->timestamps();
 

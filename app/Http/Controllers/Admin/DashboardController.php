@@ -11,33 +11,82 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    /**
+     * Finalizar reservas vencidas automáticamente
+     */
+    private function finalizarReservasVencidas()
+    {
+        $reservas = Reserva::whereIn('estado', ['pendiente', 'confirmada'])
+            ->whereDate('fecha_salida', '<', today())
+            ->get();
+
+        foreach ($reservas as $reserva) {
+
+            // Cambiar estado reserva
+            $reserva->update([
+                'estado' => 'finalizada'
+            ]);
+
+            // Liberar habitaciones
+            foreach ($reserva->habitaciones as $habitacion) {
+
+                $habitacion->update([
+                    'estado' => 'disponible'
+                ]);
+            }
+
+            // Actualizar detalles
+            $reserva->detalles()->update([
+                'estado' => 'finalizada'
+            ]);
+        }
+    }
+
     public function index()
     {
+        // Ejecutar cierre automático
+        $this->finalizarReservasVencidas();
+
         // Totales generales
-        $totalReservasHoy      = Reserva::whereDate('created_at', today())->count();
-        $totalHabitaciones     = Habitacion::count();
-        $habitacionesOcupadas  = Habitacion::where('estado', 'no disponible')->count();
-        $habitacionesDisponibles = Habitacion::where('estado', 'disponible')->count();
-        $totalClientes         = Cliente::count();
+        $totalReservasHoy = Reserva::whereDate('created_at', today())
+            ->count();
+
+        $totalHabitaciones = Habitacion::count();
+
+        $habitacionesOcupadas = Habitacion::where('estado', 'no disponible')
+            ->count();
+
+        $habitacionesDisponibles = Habitacion::where('estado', 'disponible')
+            ->count();
+
+        $totalClientes = Cliente::count();
 
         // Ingresos del mes actual
         $ingresosMes = Pago::whereMonth('fecha_pago', now()->month)
-                           ->whereYear('fecha_pago', now()->year)
-                           ->sum('monto');
+            ->whereYear('fecha_pago', now()->year)
+            ->sum('monto');
 
         // Reservas activas
         $reservasActivas = Reserva::with(['cliente', 'habitaciones'])
-                                  ->whereIn('estado', ['pendiente', 'confirmada'])
-                                  ->orderBy('fecha_entrada')
-                                  ->take(10)
-                                  ->get();
+            ->whereIn('estado', ['pendiente', 'confirmada'])
+            ->orderBy('fecha_entrada')
+            ->take(10)
+            ->get();
 
-        // Ocupación por tipo de habitación
-        $ocupacionPorTipo = Habitacion::select('tipo_habitaciones.nombre', DB::raw('count(*) as total'))
-                                      ->join('tipo_habitaciones', 'habitaciones.id_tipo_habitacion', '=', 'tipo_habitaciones.id_tipo')
-                                      ->where('habitaciones.estado', 'no disponible')
-                                      ->groupBy('tipo_habitaciones.nombre')
-                                      ->get();
+        // Ocupación por tipo
+        $ocupacionPorTipo = Habitacion::select(
+                'tipo_habitaciones.nombre',
+                DB::raw('count(*) as total')
+            )
+            ->join(
+                'tipo_habitaciones',
+                'habitaciones.id_tipo_habitacion',
+                '=',
+                'tipo_habitaciones.id_tipo'
+            )
+            ->where('habitaciones.estado', 'no disponible')
+            ->groupBy('tipo_habitaciones.nombre')
+            ->get();
 
         return view('admin.dashboard', compact(
             'totalReservasHoy',
