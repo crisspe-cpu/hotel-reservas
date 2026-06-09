@@ -18,6 +18,7 @@ class Boleta extends Model
         'id',
         'fecha_emision',
         'total',
+        'total_acumulado',
     ];
 
     protected $casts = [
