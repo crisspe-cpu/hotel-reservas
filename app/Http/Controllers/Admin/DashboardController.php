@@ -11,188 +11,323 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+
     /**
      * Finalizar reservas vencidas automáticamente
      */
     private function finalizarReservasVencidas()
     {
-        $reservas = Reserva::whereIn('estado', ['pendiente', 'confirmada'])
+
+        $reservas = Reserva::whereIn('estado', [
+                'pendiente',
+                'confirmada'
+            ])
             ->whereDate('fecha_salida', '<', today())
             ->get();
 
+
         foreach ($reservas as $reserva) {
 
-            // Cambiar estado reserva
+
+            // finalizar reserva
+
             $reserva->update([
-                'estado' => 'finalizada'
+                'estado'=>'finalizada'
             ]);
 
-            // Liberar habitaciones
-            foreach ($reserva->habitaciones as $habitacion) {
+
+
+            // liberar habitaciones
+
+            foreach($reserva->habitaciones as $habitacion){
 
                 $habitacion->update([
-                    'estado' => 'disponible'
+                    'estado'=>'disponible'
                 ]);
+
             }
 
-            // Actualizar detalles
+
+
+            // finalizar detalle
+
             $reserva->detalles()->update([
-                'estado' => 'finalizada'
+                'estado'=>'finalizada'
             ]);
+
         }
+
     }
+
+
+
+
 
     public function index()
     {
-    // Ejecutar cierre automático
-    $this->finalizarReservasVencidas();
 
-    /*
-    |--------------------------------------------------------------------------
-    | FILTROS DEL DASHBOARD
-    |--------------------------------------------------------------------------
-    */
-    $desde = request('desde');
-    $hasta = request('hasta');
-    $estadoFiltro = request('estado');
 
-    /*
-    |--------------------------------------------------------------------------
-    | CONSULTA BASE RESERVAS
-    |--------------------------------------------------------------------------
-    */
-    $reservasQuery = Reserva::query();
+        /*
+        |--------------------------------------------------------------------------
+        | Actualizar reservas vencidas
+        |--------------------------------------------------------------------------
+        */
 
-    if($desde && $hasta){
+        $this->finalizarReservasVencidas();
 
-        $reservasQuery->whereBetween('created_at',[
-            $desde.' 00:00:00',
-            $hasta.' 23:59:59'
-        ]);
 
-    }
-    if($estadoFiltro){
 
-        $reservasQuery->where(
+        /*
+        |--------------------------------------------------------------------------
+        | FILTROS
+        |--------------------------------------------------------------------------
+        */
+
+
+        $desde = request('desde');
+
+        $hasta = request('hasta');
+
+        $estadoFiltro = request('estado');
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | CONSULTA RESERVAS
+        |--------------------------------------------------------------------------
+        */
+
+
+        $reservasQuery = Reserva::query();
+
+
+
+        if($desde && $hasta){
+
+
+            $reservasQuery->whereBetween(
+                'fecha_registro',
+                [
+                    $desde.' 00:00:00',
+                    $hasta.' 23:59:59'
+                ]
+            );
+
+        }
+
+
+
+
+        if($estadoFiltro){
+
+
+            $reservasQuery->where(
+                'estado',
+                $estadoFiltro
+            );
+
+        }
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | TARJETAS
+        |--------------------------------------------------------------------------
+        */
+
+
+        $totalReservasHoy = (clone $reservasQuery)
+            ->count();
+
+
+
+        $totalHabitaciones = Habitacion::count();
+
+
+
+        $habitacionesOcupadas = Habitacion::where(
             'estado',
-            $estadoFiltro
-        );
-
-    }
-    /*
-    |--------------------------------------------------------------------------
-    | TOTALES
-    |--------------------------------------------------------------------------
-    */
-
-    $totalReservasHoy = (clone $reservasQuery)
-        ->count();
-
-    $totalHabitaciones = Habitacion::count();
-
-    $habitacionesOcupadas = Habitacion::where(
-        'estado',
-        'no disponible'
-    )->count();
-
-    $habitacionesDisponibles = Habitacion::where(
-        'estado',
-        'disponible'
-    )->count();
-
-    $totalClientes = Cliente::count();
-
-    /*
-    |--------------------------------------------------------------------------
-    | INGRESOS
-    |--------------------------------------------------------------------------
-    */
-
-    $pagosQuery = Pago::query();
-
-    if($desde && $hasta){
-
-        $pagosQuery->whereBetween('fecha_pago',[
-            $desde,
-            $hasta
-        ]);
-
-    }else{
-
-        $pagosQuery
-        ->whereMonth(
-            'fecha_pago',
-            now()->month
-        )
-        ->whereYear(
-            'fecha_pago',
-            now()->year
-        );
-    }
-
-    $ingresosMes = $pagosQuery->sum('monto');
-
-    /*
-    |--------------------------------------------------------------------------
-    | RESERVAS TABLA
-    |--------------------------------------------------------------------------
-    */
-
-    $reservasActivas = (clone $reservasQuery)
-        ->with([
-            'cliente',
-            'habitaciones'
-        ])
-        ->orderBy('fecha_entrada')
-        ->take(10)
-        ->get();
-    /*
-    |--------------------------------------------------------------------------
-    | OCUPACION POR TIPO
-    |--------------------------------------------------------------------------
-    */
-    $ocupacionPorTipo = Habitacion::select(
-            'tipo_habitaciones.nombre',
-            DB::raw('count(*) as total')
-        )
-        ->join(
-            'tipo_habitaciones',
-            'habitaciones.id_tipo_habitacion',
-            '=',
-            'tipo_habitaciones.id_tipo'
-        )
-        ->where(
-            'habitaciones.estado',
             'no disponible'
-        )
-        ->groupBy(
-            'tipo_habitaciones.nombre'
-        )
-        ->get();
+        )->count();
 
-    return view('admin.dashboard', compact(
 
-        'totalReservasHoy',
 
-        'totalHabitaciones',
+        $habitacionesDisponibles = Habitacion::where(
+            'estado',
+            'disponible'
+        )->count();
 
-        'habitacionesOcupadas',
 
-        'habitacionesDisponibles',
 
-        'totalClientes',
+        $totalClientes = Cliente::count();
 
-        'ingresosMes',
 
-        'reservasActivas',
 
-        'ocupacionPorTipo',
 
-        // filtros para Blade
-        'desde',
-        'hasta',
-        'estadoFiltro'
 
-    ));
-}
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | INGRESOS DEL MES
+        |--------------------------------------------------------------------------
+        */
+
+
+        $pagosQuery = Pago::query();
+
+
+
+        if($desde && $hasta){
+
+
+            $pagosQuery->whereBetween(
+                'fecha_pago',
+                [
+                    $desde,
+                    $hasta
+                ]
+            );
+
+
+        }else{
+
+
+            $pagosQuery
+            ->whereMonth(
+                'fecha_pago',
+                now()->month
+            )
+            ->whereYear(
+                'fecha_pago',
+                now()->year
+            );
+
+
+        }
+
+
+
+
+        $ingresosMes = $pagosQuery->sum('monto');
+
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | RESERVAS ACTIVAS DASHBOARD
+        |--------------------------------------------------------------------------
+        */
+
+
+        $reservasActivas = Reserva::with([
+                'cliente',
+                'habitaciones'
+            ])
+
+            ->whereIn('estado',[
+                'pendiente',
+                'confirmada'
+            ])
+
+            ->orderBy(
+                'fecha_entrada',
+                'desc'
+            )
+
+            ->take(10)
+
+            ->get();
+
+
+
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | OCUPACION POR TIPO
+        |--------------------------------------------------------------------------
+        */
+
+
+        $ocupacionPorTipo = Habitacion::select(
+
+                'tipo_habitaciones.nombre',
+
+                DB::raw('count(*) as total')
+
+            )
+
+            ->join(
+                'tipo_habitaciones',
+                'habitaciones.id_tipo_habitacion',
+                '=',
+                'tipo_habitaciones.id_tipo'
+            )
+
+            ->where(
+                'habitaciones.estado',
+                'no disponible'
+            )
+
+            ->groupBy(
+                'tipo_habitaciones.nombre'
+            )
+
+            ->get();
+
+
+
+
+
+
+
+        return view(
+            'admin.dashboard',
+            compact(
+
+                'totalReservasHoy',
+
+                'totalHabitaciones',
+
+                'habitacionesOcupadas',
+
+                'habitacionesDisponibles',
+
+                'totalClientes',
+
+                'ingresosMes',
+
+                'reservasActivas',
+
+                'ocupacionPorTipo',
+
+                'desde',
+
+                'hasta',
+
+                'estadoFiltro'
+
+            )
+        );
+
+    }
+
+
 }

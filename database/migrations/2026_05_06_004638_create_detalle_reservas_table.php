@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('id_reserva');
             $table->unsignedBigInteger('id_habitacion');
             $table->decimal('precio_aplicado', 10, 2);
-            $table->enum('estado', ['activa', 'cancelada'])->default('activa');
+            $table->enum('estado', ['activa', 'cancelada', 'finalizada'])->default('activa');
 
             // Una habitación no puede aparecer dos veces en la misma reserva
             $table->unique(['id_reserva', 'id_habitacion']);
