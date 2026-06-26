@@ -471,85 +471,55 @@
 ════════════════════════════════════════════ --}}
 <div class="main-grid">
 
-    {{-- ── Reservas ── --}}
     <div class="panel">
 
-        <div class="panel-head">
-            <span class="panel-title">
-                <i class="bi bi-calendar-week" style="color:var(--purple-mid)"></i>
-                Reservas
-                @if(!empty($estadoFiltro))
-                    · <span style="color:var(--purple-mid)">{{ ucfirst($estadoFiltro) }}</span>
-                @else
-                    activas
-                @endif
-            </span>
-            <a href="{{ route('recepcionista.reservas.index') }}" class="btn-ghost-sm">
-                Ver todas →
-            </a>
-        </div>
-
-        {{-- Mini resumen si hay filtro --}}
-        @if(!empty($desde) || !empty($hasta) || !empty($estadoFiltro))
-        <div class="filter-summary">
-            <i class="bi bi-info-circle"></i>
-            {{ $reservasActivas->count() }} resultado(s) encontrado(s)
-            @if(!empty($desde) || !empty($hasta))
-                en el rango seleccionado
-            @endif
-        </div>
-        @endif
-
-        <div class="tbl-wrap">
-            <table class="tbl">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Cliente</th>
-                        <th>Entrada</th>
-                        <th>Salida</th>
-                        <th>Estado</th>
-                        <th class="r">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($reservasActivas as $r)
-
-                    @php
-                        $pillMap = [
-                            'confirmada' => 'success',
-                            'pendiente'  => 'warning',
-                            'cancelada'  => 'danger',
-                            'finalizada' => 'info',
-                        ];
-                        $pillClass = $pillMap[$r->estado] ?? 'muted';
-                    @endphp
-
-                    <tr>
-                        <td class="mono" style="color:var(--text-sub);font-size:12px">{{ $r->id_reserva }}</td>
-                        <td>
-                            <div style="font-weight:500">{{ $r->cliente->nombre }} {{ $r->cliente->apellido }}</div>
-                            <div style="font-size:11px;color:var(--text-sub)">{{ $r->cliente->documento }}</div>
-                        </td>
-                        <td class="mono" style="font-size:12px">{{ $r->fecha_entrada->format('d/m/Y') }}</td>
-                        <td class="mono" style="font-size:12px">{{ $r->fecha_salida->format('d/m/Y') }}</td>
-                        <td><span class="spill spill-{{ $pillClass }}">{{ ucfirst($r->estado) }}</span></td>
-                        <td class="r mono" style="font-weight:600;font-size:12px">S/ {{ number_format($r->precio_total, 2) }}</td>
-                    </tr>
-
-                    @empty
-                    <tr>
-                        <td colspan="6" class="empty-state">
-                            <i class="bi bi-calendar-x" style="font-size:24px;display:block;margin-bottom:8px;opacity:.35"></i>
-                            Sin reservas para el filtro aplicado
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
+    <div class="panel-head">
+        <span class="panel-title">
+            <i class="bi bi-door-open" style="color:var(--purple-mid)"></i>
+            Habitaciones más usadas
+        </span>
     </div>
+
+    <div class="tbl-wrap">
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Habitación</th>
+                    <th>Estado</th>
+                    <th class="r">Veces usada</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @php $rank = 1; @endphp
+
+                    @forelse($habitacionesMasUsadas as $h)
+                    <tr>
+                        <td class="mono">#{{ $rank++ }} Hab. {{ $h->numero }}</td>
+
+                        <td>
+                            <span class="spill spill-muted">
+                                {{ ucfirst($h->estado) }}
+                            </span>
+                        </td>
+
+                        <td class="r mono" style="font-weight:600">
+                            {{ $h->total_usos }}
+                        </td>
+                    </tr>
+                    @empty
+                <tr>
+                    <td colspan="3" class="empty-state">
+                        <i class="bi bi-door-closed" style="font-size:24px;display:block;margin-bottom:8px;opacity:.35"></i>
+                        No hay datos para el filtro seleccionado
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+</div>
 
     {{-- ── Ocupación por tipo ── --}}
     <div class="panel">

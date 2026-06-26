@@ -90,9 +90,10 @@ class Reserva extends Model
         return $this->fecha_entrada->diffInDays($this->fecha_salida);
     }
 
-    public function getTotalPagadoAttribute(): float
+   public function getTotalPagadoAttribute(): float
     {
-        return $this->pagos->where('estado_pago', 'completado')->sum('monto');
+        // Suma directa de los montos asociados a la reserva
+        return $this->pagos->sum('monto');
     }
 
     public function getSaldoPendienteAttribute(): float

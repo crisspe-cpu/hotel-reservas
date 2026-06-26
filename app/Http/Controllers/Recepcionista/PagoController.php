@@ -6,21 +6,114 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Pago;
 use App\Models\Reserva;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PagoController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $pagos = Pago::with('reserva.cliente')
-                     ->latest('fecha_pago')
-                     ->paginate(15);
+        $desde   = $request->desde;
+        $hasta   = $request->hasta;
+        $metodo  = $request->metodo_pago;
+        $buscar  = $request->buscar;
 
-        return view('recepcionista.pagos.index', compact('pagos'));
+        $query = Pago::with('reserva.cliente')
+                     ->latest('fecha_pago');
+
+        if ($desde && $hasta) {
+            $query->whereBetween('fecha_pago', [
+                $desde . ' 00:00:00',
+                $hasta . ' 23:59:59',
+            ]);
+        } elseif ($desde) {
+            $query->where('fecha_pago', '>=', $desde . ' 00:00:00');
+        } elseif ($hasta) {
+            $query->where('fecha_pago', '<=', $hasta . ' 23:59:59');
+        }
+
+        if ($metodo) {
+            $query->where('metodo_pago', $metodo);
+        }
+
+        if ($buscar) {
+            $query->whereHas('reserva.cliente', function ($q) use ($buscar) {
+                $q->where('nombre', 'like', "%{$buscar}%")
+                  ->orWhere('apellido', 'like', "%{$buscar}%")
+                  ->orWhere('documento', 'like', "%{$buscar}%");
+            });
+        }
+
+        // Totales por método (para stats)
+        $totalesPorMetodo = (clone $query)->select('metodo_pago', \DB::raw('SUM(monto) as total'))
+            ->groupBy('metodo_pago')
+            ->pluck('total', 'metodo_pago');
+
+        $totalGeneral = (clone $query)->sum('monto');
+
+        $pagos = $query->paginate(15)->withQueryString();
+
+        return view('recepcionista.pagos.index', compact(
+            'pagos', 'desde', 'hasta', 'metodo', 'buscar',
+            'totalesPorMetodo', 'totalGeneral'
+        ));
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $desde  = $request->desde;
+        $hasta  = $request->hasta;
+        $metodo = $request->metodo_pago;
+        $buscar = $request->buscar;
+
+        $query = Pago::with('reserva.cliente')->latest('fecha_pago');
+
+        if ($desde && $hasta) {
+
+            $query->whereBetween('fecha_pago', [
+                $desde . ' 00:00:00',
+                $hasta . ' 23:59:59',
+            ]);
+
+        } elseif ($desde) {
+
+            $query->where(
+                'fecha_pago',
+                '>=',
+                $desde . ' 00:00:00'
+            );
+
+        } elseif ($hasta) {
+
+            $query->where(
+                'fecha_pago',
+                '<=',
+                $hasta . ' 23:59:59'
+            );
+
+        }
+        if ($metodo) {
+            $query->where('metodo_pago', $metodo);
+        }
+        if ($buscar) {
+            $query->whereHas('reserva.cliente', function ($q) use ($buscar) {
+                $q->where('nombre', 'like', "%{$buscar}%")
+                  ->orWhere('apellido', 'like', "%{$buscar}%");
+            });
+        }
+
+        $pagos        = $query->get();
+        $totalGeneral = $pagos->sum('monto');
+
+        $pdf = Pdf::loadView('recepcionista.pagos.pdf', compact(
+            'pagos', 'desde', 'hasta', 'metodo', 'totalGeneral'
+        ))->setPaper('a4', 'landscape');
+
+        $filename = 'pagos_' . now()->format('Ymd_His') . '.pdf';
+        return $pdf->download($filename);
     }
 
     public function create(Request $request)
     {
-        // Viene con id_reserva como query param: /pagos/create?id_reserva=5
         $reservas = Reserva::with('cliente')
                            ->whereIn('estado', ['pendiente', 'confirmada'])
                            ->get();
@@ -40,9 +133,7 @@ class PagoController extends Controller
             'metodo_pago' => 'required|in:efectivo,tarjeta,yape,plin',
         ]);
 
-        $reserva = Reserva::findOrFail($request->id_reserva);
-
-        // Validar que no se pague de más
+        $reserva     = Reserva::with('pagos')->findOrFail($request->id_reserva);
         $totalPagado = $reserva->pagos->sum('monto');
         $saldo       = $reserva->precio_total - $totalPagado;
 
@@ -59,10 +150,13 @@ class PagoController extends Controller
             'metodo_pago' => $request->metodo_pago,
         ]);
 
-        // Confirmar reserva si está totalmente pagada
-        if (($totalPagado + $request->monto) >= $reserva->precio_total) {
-            $reserva->update(['estado' => 'confirmada']);
-        }
+        $totalPagado += $request->monto;
+
+        $reserva->update([
+            'estado' => $totalPagado >= $reserva->precio_total
+                ? 'confirmada'
+                : 'pendiente'
+        ]);
 
         return redirect()->route('recepcionista.reservas.show', $reserva)
                          ->with('success', 'Pago registrado correctamente.');
@@ -78,13 +172,14 @@ class PagoController extends Controller
     {
         $reserva = $pago->reserva;
 
-        if ($reserva->estado === 'completada') {
-            return back()->withErrors(['error' => 'No se puede anular el pago de una reserva completada.']);
-        }
+       if ($reserva->estado === 'finalizada') {
+        return back()->withErrors([
+            'error' => 'No se puede anular el pago de una reserva finalizada.'
+        ]);
+    }
 
         $pago->delete();
 
-        // Si ya no hay pagos suficientes, volver a pendiente
         $totalPagado = $reserva->pagos()->sum('monto');
         if ($totalPagado < $reserva->precio_total) {
             $reserva->update(['estado' => 'pendiente']);

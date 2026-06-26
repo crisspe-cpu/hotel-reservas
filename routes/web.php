@@ -78,6 +78,24 @@ Route::middleware(['auth', 'role:recepcionista'])
     ->name('recepcionista.')
     ->group(function () {
 
+    Route::get('reservas/export-pdf', [ReservaController::class, 'exportPdf'])
+    ->name('reservas.export-pdf');
+
+    Route::get('pagos/export-pdf', [PagoController::class, 'exportPdf'])
+    ->name('pagos.export-pdf');
+
+
+    // 1. PRIMERO las rutas estáticas/específicas
+Route::get('boletas/export-pdf', [BoletaController::class, 'exportPdf'])
+    ->name('boletas.export-pdf');
+
+// 2. SEGUNDO las rutas con parámetros dinámicos individuales o recursos
+Route::get('boletas/{boleta}/export-boleta-pdf', [BoletaController::class, 'exportBoletaPdf'])
+    ->name('boletas.export-boleta-pdf');
+
+Route::resource('boletas', BoletaController::class)
+    ->only(['index', 'store', 'show']);
+
     Route::get('/dashboard', function () {
         return view('recepcionista.dashboard');
     })->name('dashboard');

@@ -345,7 +345,7 @@
     <div class="sidebar-brand">
         <div class="brand-icon">🏨</div>
         <div>
-            <div class="brand-name">HotelApp</div>
+            <div class="brand-name">Palacio Del Rey</div>
             <div class="brand-sub">Sistema de Reservas</div>
         </div>
     </div>

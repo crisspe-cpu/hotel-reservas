@@ -17,6 +17,14 @@ class Habitacion extends Model
         'piso',
         'estado',
         'id_tipo_habitacion',
+        'motivo_mantenimiento',
+        'mantenimiento_desde',
+        'mantenimiento_hasta',
+    ];
+
+    protected $casts = [
+        'mantenimiento_desde' => 'date',
+        'mantenimiento_hasta' => 'date',
     ];
 
     // ── Relaciones ──────────────────────────────────────────
@@ -51,9 +59,19 @@ class Habitacion extends Model
         return $query->where('piso', $piso);
     }
 
+    public function scopeEnMantenimiento($query)
+    {
+        return $query->where('estado', 'mantenimiento');
+    }
+
     // ── Helpers ─────────────────────────────────────────────
     public function estaDisponible(): bool
     {
         return $this->estado === 'disponible';
+    }
+
+    public function estaEnMantenimiento(): bool
+    {
+        return $this->estado === 'mantenimiento';
     }
 }

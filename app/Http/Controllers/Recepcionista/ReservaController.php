@@ -10,12 +10,10 @@ use App\Models\Reserva;
 use App\Models\Cliente;
 use App\Models\Habitacion;
 use App\Models\DetalleReserva;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReservaController extends Controller
 {
-    /**
-     * Finalizar reservas vencidas automáticamente
-     */
     private function finalizarReservasVencidas()
     {
         $reservas = Reserva::whereIn('estado', ['pendiente', 'confirmada'])
@@ -23,39 +21,84 @@ class ReservaController extends Controller
             ->get();
 
         foreach ($reservas as $reserva) {
+            $reserva->update(['estado' => 'finalizada']);
 
-            // Cambiar estado reserva
-            $reserva->update([
-                'estado' => 'finalizada'
-            ]);
-
-            // Liberar habitaciones
             foreach ($reserva->habitaciones as $habitacion) {
-
-                $habitacion->update([
-                    'estado' => 'disponible'
-                ]);
+                $habitacion->update(['estado' => 'disponible']);
             }
 
-            // Actualizar detalle reserva
-            $reserva->detalles()->update([
-                'estado' => 'finalizada'
-            ]);
+            $reserva->detalles()->update(['estado' => 'finalizada']);
         }
     }
 
     public function index(Request $request)
     {
-        // Ejecutar validación automática
         $this->finalizarReservasVencidas();
 
-        $reservas = Reserva::with(['cliente', 'habitaciones.tipo'])
-                    ->when($request->estado, fn($q) => $q->where('estado', $request->estado))
-                    ->when($request->fecha,  fn($q) => $q->whereDate('fecha_entrada', $request->fecha))
-                    ->latest()
-                    ->paginate(15);
+        $estado = $request->estado;
+        $desde  = $request->desde;
+        $hasta  = $request->hasta;
+        $buscar = $request->buscar;
 
-        return view('recepcionista.reservas.index', compact('reservas'));
+        $reservas = Reserva::with(['cliente', 'habitaciones.tipo'])
+            ->when($estado, fn($q) => $q->where('estado', $estado))
+            ->when($desde && $hasta, fn($q) => $q->whereBetween('fecha_entrada', [$desde, $hasta]))
+            ->when($desde && !$hasta, fn($q) => $q->where('fecha_entrada', '>=', $desde))
+            ->when(!$desde && $hasta, fn($q) => $q->where('fecha_entrada', '<=', $hasta))
+            ->when($buscar, function ($q) use ($buscar) {
+                $q->whereHas('cliente', function ($c) use ($buscar) {
+                    $c->where('nombre', 'like', "%{$buscar}%")
+                      ->orWhere('apellido', 'like', "%{$buscar}%")
+                      ->orWhere('documento', 'like', "%{$buscar}%");
+                });
+            })
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        // Stats rápidas para las cards
+        $statsQuery = Reserva::query()
+            ->when($desde && $hasta, fn($q) => $q->whereBetween('fecha_entrada', [$desde, $hasta]));
+
+        $stats = [
+            'pendientes'  => (clone $statsQuery)->where('estado', 'pendiente')->count(),
+            'confirmadas' => (clone $statsQuery)->where('estado', 'confirmada')->count(),
+            'canceladas'  => (clone $statsQuery)->where('estado', 'cancelada')->count(),
+            'finalizadas' => (clone $statsQuery)->where('estado', 'finalizada')->count(),
+        ];
+
+        return view('recepcionista.reservas.index', compact(
+            'reservas', 'estado', 'desde', 'hasta', 'buscar', 'stats'
+        ));
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $estado = $request->estado;
+        $desde  = $request->desde;
+        $hasta  = $request->hasta;
+        $buscar = $request->buscar;
+
+        $reservas = Reserva::with(['cliente', 'habitaciones.tipo', 'pagos'])
+            ->when($estado, fn($q) => $q->where('estado', $estado))
+            ->when($desde && $hasta, fn($q) => $q->whereBetween('fecha_entrada', [$desde, $hasta]))
+            ->when($buscar, function ($q) use ($buscar) {
+                $q->whereHas('cliente', function ($c) use ($buscar) {
+                    $c->where('nombre', 'like', "%{$buscar}%")
+                      ->orWhere('apellido', 'like', "%{$buscar}%");
+                });
+            })
+            ->latest()
+            ->get();
+
+        $totalGeneral = $reservas->sum('precio_total');
+
+        $pdf = Pdf::loadView('recepcionista.reservas.pdf', compact(
+            'reservas', 'desde', 'hasta', 'estado', 'totalGeneral'
+        ))->setPaper('a4', 'landscape');
+
+        $filename = 'reservas_' . now()->format('Ymd_His') . '.pdf';
+        return $pdf->download($filename);
     }
 
     public function create()
@@ -69,41 +112,33 @@ class ReservaController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'id_cliente'      => 'required|exists:clientes,id_cliente',
-            'id_habitacion'   => 'required|exists:habitaciones,id_habitacion',
-            'fecha_entrada'   => 'required|date|after_or_equal:today',
-            'fecha_salida'    => 'required|date|after:fecha_entrada',
-            'num_huespedes'   => 'required|integer|min:1',
-            'notas'           => 'nullable|string',
+            'id_cliente'    => 'required|exists:clientes,id_cliente',
+            'id_habitacion' => 'required|exists:habitaciones,id_habitacion',
+            'fecha_entrada' => 'required|date|after_or_equal:today',
+            'fecha_salida'  => 'required|date|after:fecha_entrada',
+            'num_huespedes' => 'required|integer|min:1',
+            'notas'         => 'nullable|string',
         ]);
 
-        // Verificar disponibilidad
         $ocupada = DetalleReserva::where('id_habitacion', $request->id_habitacion)
             ->whereHas('reserva', function ($q) use ($request) {
-
                 $q->whereIn('estado', ['pendiente', 'confirmada'])
                   ->where('fecha_entrada', '<', $request->fecha_salida)
                   ->where('fecha_salida',  '>', $request->fecha_entrada);
-
             })->exists();
 
         if ($ocupada) {
-
             return back()->withErrors([
                 'id_habitacion' => 'La habitación no está disponible en esas fechas.'
             ])->withInput();
         }
 
-        $habitacion = Habitacion::with('tipo')
-            ->findOrFail($request->id_habitacion);
+        $habitacion = Habitacion::with('tipo')->findOrFail($request->id_habitacion);
 
-        $noches = now()->parse($request->fecha_entrada)
-            ->diffInDays($request->fecha_salida);
-
+        $noches = now()->parse($request->fecha_entrada)->diffInDays($request->fecha_salida);
         $precio = $habitacion->tipo->precio_base * $noches;
 
         DB::transaction(function () use ($request, $habitacion, $precio) {
-
             $reserva = Reserva::create([
                 'id_cliente'     => $request->id_cliente,
                 'id'             => Auth::id(),
@@ -122,10 +157,7 @@ class ReservaController extends Controller
                 'estado'          => 'activa',
             ]);
 
-            // Ocupar habitación
-            $habitacion->update([
-                'estado' => 'no disponible'
-            ]);
+            $habitacion->update(['estado' => 'no disponible']);
         });
 
         return redirect()
@@ -135,70 +167,44 @@ class ReservaController extends Controller
 
     public function show(Reserva $reserva)
     {
-        $reserva->load([
-            'cliente',
-            'usuario',
-            'habitaciones.tipo',
-            'pagos',
-            'boletas'
-        ]);
-
+        $reserva->load(['cliente', 'usuario', 'habitaciones.tipo', 'pagos', 'boletas']);
         return view('recepcionista.reservas.show', compact('reserva'));
     }
 
     public function edit(Reserva $reserva)
     {
         if ($reserva->estado === 'cancelada') {
-
-            return back()->withErrors([
-                'error' => 'No se puede editar una reserva cancelada.'
-            ]);
+            return back()->withErrors(['error' => 'No se puede editar una reserva cancelada.']);
         }
 
-        $reserva->load([
-            'cliente',
-            'usuario',
-            'habitaciones.tipo',
-            'pagos'
-        ]);
+        $reserva->load(['cliente', 'usuario', 'habitaciones.tipo', 'pagos']);
 
         $habitacionPrincipal = $reserva->habitaciones->first();
-
-        $precioBase = $habitacionPrincipal->tipo->precio_base;
-
+        $precioBase  = $habitacionPrincipal->tipo->precio_base;
         $totalPagado = $reserva->pagos->sum('monto');
 
         return view('recepcionista.reservas.edit', compact(
-            'reserva',
-            'precioBase',
-            'totalPagado'
+            'reserva', 'precioBase', 'totalPagado'
         ));
     }
 
     public function update(Request $request, Reserva $reserva)
     {
         $request->validate([
-            'fecha_entrada'  => 'required|date',
-            'fecha_salida'   => 'required|date|after:fecha_entrada',
-            'num_huespedes'  => 'required|integer|min:1',
-            'estado'         => 'required|in:pendiente,confirmada,cancelada,finalizada',
+            'fecha_entrada' => 'required|date',
+            'fecha_salida'  => 'required|date|after:fecha_entrada',
+            'num_huespedes' => 'required|integer|min:1',
+            'estado'        => 'required|in:pendiente,confirmada,cancelada,finalizada',
         ]);
 
         DB::transaction(function () use ($request, $reserva) {
-
-            $habitacion = $reserva->habitaciones->first();
-
-            $noches = \Carbon\Carbon::parse($request->fecha_entrada)
-                ->diffInDays($request->fecha_salida);
-
-            $nuevoTotal = $habitacion->tipo->precio_base * $noches;
-
+            $habitacion  = $reserva->habitaciones->first();
+            $noches      = \Carbon\Carbon::parse($request->fecha_entrada)->diffInDays($request->fecha_salida);
+            $nuevoTotal  = $habitacion->tipo->precio_base * $noches;
             $totalPagado = $reserva->pagos->sum('monto');
 
             $nuevoEstado = $request->estado;
-
             if ($request->estado !== 'cancelada' && $nuevoTotal > $totalPagado) {
-
                 $nuevoEstado = 'pendiente';
             }
 
@@ -210,23 +216,13 @@ class ReservaController extends Controller
                 'precio_total'  => $nuevoTotal,
             ]);
 
-            $reserva->detalles()->update([
-                'precio_aplicado' => $nuevoTotal,
-            ]);
+            $reserva->detalles()->update(['precio_aplicado' => $nuevoTotal]);
 
-            // Cancelación
             if ($request->estado === 'cancelada') {
-
-                foreach ($reserva->habitaciones as $habitacion) {
-
-                    $habitacion->update([
-                        'estado' => 'disponible'
-                    ]);
+                foreach ($reserva->habitaciones as $hab) {
+                    $hab->update(['estado' => 'disponible']);
                 }
-
-                $reserva->detalles()->update([
-                    'estado' => 'cancelada'
-                ]);
+                $reserva->detalles()->update(['estado' => 'cancelada']);
             }
         });
 
@@ -238,23 +234,14 @@ class ReservaController extends Controller
     public function destroy(Reserva $reserva)
     {
         if ($reserva->estado === 'confirmada') {
-
-            return back()->withErrors([
-                'error' => 'No se puede eliminar una reserva confirmada.'
-            ]);
+            return back()->withErrors(['error' => 'No se puede eliminar una reserva confirmada.']);
         }
 
         DB::transaction(function () use ($reserva) {
-
             foreach ($reserva->habitaciones as $hab) {
-
-                $hab->update([
-                    'estado' => 'disponible'
-                ]);
+                $hab->update(['estado' => 'disponible']);
             }
-
             $reserva->detalles()->delete();
-
             $reserva->delete();
         });
 
