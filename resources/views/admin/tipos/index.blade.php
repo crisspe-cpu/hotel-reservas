@@ -22,7 +22,7 @@
                 @forelse($tipos as $t)
                 <tr>
                     <td class="mono" style="color:var(--muted)">{{ $t->id_tipo }}</td>
-                    <td style="font-weight:600">{{ $t->nombre }}</td>
+                    <td style="font-weight:600">{{ $t->nombree }}</td>
                     <td style="text-align:center">{{ $t->capacidad }} <i class="bi bi-person" style="color:var(--muted);font-size:11px"></i></td>
                     <td style="font-weight:500">S/ {{ number_format($t->precio_base, 2) }}</td>
                     <td style="text-align:center"><span class="badge badge-info">{{ $t->habitaciones_count }}</span></td>
