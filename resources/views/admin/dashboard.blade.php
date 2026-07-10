@@ -457,7 +457,7 @@
         <div class="stat-val-new sm">S/ {{ number_format($ingresosMes, 2) }}</div>
         <div class="stat-label-new">
             @if(!empty($desde) || !empty($hasta))
-                Ingresos en el período
+                Ingresos en el períodoo
             @else
                 Ingresos {{ now()->translatedFormat('F Y') }}
             @endif
