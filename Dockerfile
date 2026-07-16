@@ -57,4 +57,6 @@ RUN chmod -R 777 storage bootstrap/cache
 
 EXPOSE 10000
 
-CMD ["sh", "-c", "php artisan migrate --seed --force && php -S 0.0.0.0:$PORT -t public"]
+# CMD ["sh", "-c", "php artisan migrate --seed --force && php -S 0.0.0.0:$PORT -t public"]
+
+CMD ["sh", "-c", "php artisan migrate --force && php -S 0.0.0.0:$PORT -t public"]

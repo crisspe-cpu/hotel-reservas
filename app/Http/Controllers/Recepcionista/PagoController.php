@@ -44,7 +44,8 @@ class PagoController extends Controller
         }
 
         // Totales por método (para stats)
-        $totalesPorMetodo = (clone $query)->select('metodo_pago', \DB::raw('SUM(monto) as total'))
+        $totalesPorMetodo = (clone $query)->reorder() // <-- ESTO ELIMINA EL ORDER BY FECHA_PAGO
+            ->select('metodo_pago', \DB::raw('SUM(monto) as total'))
             ->groupBy('metodo_pago')
             ->pluck('total', 'metodo_pago');
 
