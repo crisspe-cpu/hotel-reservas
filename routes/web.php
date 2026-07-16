@@ -139,3 +139,18 @@ Route::middleware(['auth', 'role:admin'])
 
 
 require __DIR__.'/auth.php';
+
+use Illuminate\Support\Facades\DB;
+
+Route::get('/health', function () {
+    try {
+        // Intenta hacer una consulta simple a la base de datos de Aiven
+        DB::connection()->getPdo();
+        
+        // Si la base de datos responde, todo está perfecto
+        return response()->json(['status' => 'healthy'], 200);
+    } catch (\Exception $e) {
+        // Si la base de datos falló o no hay conexión, devuelve un error 500
+        return response()->json(['status' => 'unhealthy', 'error' => $e->getMessage()], 500);
+    }
+});
